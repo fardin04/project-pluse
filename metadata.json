@@ -1,0 +1,5 @@
+{
+  "name": "ProjectPulse",
+  "description": "A comprehensive project health monitoring and client feedback tracker. It allows admins to monitor project risks, employees to submit progress updates, and clients to provide structured feedback, all contributing to an automated Health Score.",
+  "requestFramePermissions": []
+}
