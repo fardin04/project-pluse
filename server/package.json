@@ -2,11 +2,11 @@
   "name": "projectpulse-backend",
   "version": "1.0.0",
   "type": "module",
-  "main": "server.ts",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node --loader ts-node/esm server.ts",
-    "dev": "nodemon --exec node --loader ts-node/esm server.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "nodemon server.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
