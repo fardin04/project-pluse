@@ -8,7 +8,6 @@ import { User } from './models/User.js';
 import { Project } from './models/Project.js';
 import { Event } from './models/Event.js';
 import { verifyToken } from './middleware/auth.js';
-import { upload } from './middleware/upload.js';
 
 dotenv.config();
 const app = express();
@@ -200,9 +199,7 @@ app.get('/api/projects/:id/events', verifyToken, async (req: any, res) => {
   res.json(events);
 });
 
-app.use('/uploads', express.static('uploads'));
-
-app.post('/api/projects/:id/events',verifyToken,upload.single("file"),async (req: any, res) => {
+app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
   const { type } = req.body;
   const projectId = req.params.id;
   const userId = req.user.id;
@@ -252,10 +249,6 @@ app.post('/api/projects/:id/events',verifyToken,upload.single("file"),async (req
     payload.blockers = req.body.blockers;
     payload.confidenceLevel = Number(req.body.confidenceLevel);
     payload.completionPercent = Number(req.body.completionPercent);
-
-    if (req.file) {
-    payload.attachment = req.file.path;
-  }
   }
 
   if (type === 'FEEDBACK') {
