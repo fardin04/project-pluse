@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Project, User, UserRole, ProjectStatus, WeeklyCheckIn, 
   ClientFeedback, RiskItem, RiskSeverity, RiskStatus 
@@ -28,6 +28,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
   const [showRiskForm, setShowRiskForm] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [selectedRisk, setSelectedRisk] = useState<any>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const loadProjectData = async () => {
@@ -50,7 +51,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-full text-slate-400">
       <Loader2 className="animate-spin mb-4" size={40} />
-      <p>Synchronizing with Cloud DB...</p>
+      <p>Synchronizing with Cloud D</p>
     </div>
   );
 
@@ -94,7 +95,11 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
     }
 
     try {
-      await api.createEvent(projectId, payload);
+        await api.createCheckinWithFile(
+  projectId,
+  payload,
+  fileRef.current?.files?.[0] || null
+);
       const [newProj, newEvents] = await Promise.all([
         api.getProject(projectId),
         api.getEvents(projectId)
@@ -105,6 +110,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
       setShowFeedbackForm(false);
       setShowRiskForm(false);
       onUpdate();
+      
     } catch (err: any) {
       const errorMessage = err.message || "Failed to submit update";
       if (errorMessage.includes("Weekly check-in already submitted")) {
@@ -418,6 +424,18 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                   <option value="1">Confidence: 1</option>
                 </select>
                 <input name="completion" type="number" min="0" max="100" className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Estimated completion %" required />
+                <div className="mt-3">
+  <label className="block text-sm font-medium text-slate-600 mb-1">
+    Attach Supporting Document (PDF/DOC max 2MB)
+  </label>
+
+  <input
+    ref={fileRef}
+    type="file"
+    accept=".pdf,.doc,.docx"
+    className="w-full text-sm border border-slate-300 rounded-xl p-2"
+  />
+</div>
               </div>
               <div className="flex gap-4">
                 <button type="button" onClick={() => setShowCheckinForm(false)} className="flex-1 py-4 font-bold text-slate-500">Cancel</button>

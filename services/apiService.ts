@@ -1,8 +1,8 @@
-
 const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
 
 const fetcher = async (endpoint: string, options: any = {}) => {
   const token = localStorage.getItem('pulse_token');
+
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -10,6 +10,7 @@ const fetcher = async (endpoint: string, options: any = {}) => {
   };
 
   const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+
   if (!response.ok) {
     let errorMessage = 'API request failed';
     try {
@@ -20,6 +21,7 @@ const fetcher = async (endpoint: string, options: any = {}) => {
     }
     throw new Error(errorMessage);
   }
+
   return response.json();
 };
 
@@ -45,10 +47,54 @@ export const api = {
 
   // Events
   getEvents: (projectId: string) => fetcher(`/api/projects/${projectId}/events`),
+
+  // 🔴 OLD JSON EVENT (for FEEDBACK / RISK / STATUS_CHANGE)
   createEvent: (projectId: string, eventData: any) => fetcher(`/api/projects/${projectId}/events`, { 
     method: 'POST', 
     body: JSON.stringify(eventData) 
   }),
+
+  // 🟢 NEW CHECKIN WITH FILE UPLOAD
+  createCheckinWithFile: async (
+    projectId: string,
+    eventData: any,
+    file: File | null
+  ) => {
+
+    const token = localStorage.getItem('pulse_token');
+
+    const formData = new FormData();
+
+    Object.keys(eventData).forEach((key) => {
+      formData.append(key, eventData[key]);
+    });
+
+    if (file) {
+      formData.append("file", file);
+    }
+
+    const response = await fetch(`${API_URL}/api/projects/${projectId}/events`, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Checkin upload failed';
+      try {
+        const error = await response.json();
+        errorMessage = error.message || error.error || errorMessage;
+      } catch (e) {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
+
   resolveRisk: (projectId: string, eventId: string, data: any = {}) => fetcher(`/api/projects/${projectId}/events/${eventId}/resolve`, {
     method: 'PATCH',
     body: JSON.stringify(data)

@@ -16,6 +16,7 @@ const eventSchema = new mongoose.Schema({
   blockers: { type: String },
   confidenceLevel: { type: Number, min: 1, max: 5 },
   completionPercent: { type: Number, min: 0, max: 100 },
+  attachment: { type: String, required: false }, 
   // Client feedback fields
   satisfactionRating: { type: Number, min: 1, max: 5 },
   clarityRating: { type: Number, min: 1, max: 5 },
