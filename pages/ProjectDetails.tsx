@@ -469,7 +469,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                 </label>
                 <input 
                   name="docLink" 
-                  type="url" 
+                  type="string" 
                   className="w-full p-4 bg-slate-50 border rounded-2xl" 
                   placeholder="https://drive.google.com/..." 
                 />
