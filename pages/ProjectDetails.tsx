@@ -7,7 +7,7 @@ import {
 import { api } from '../services/apiService';
 import { 
   ArrowLeft, Calendar, AlertCircle, 
-  MessageSquare, TrendingUp, History, Flag, Plus, Check, ClipboardList, Loader2 
+  MessageSquare, TrendingUp, History, Flag, Plus, Check, ClipboardList, Loader2, Paperclip 
 } from 'lucide-react';
 
 interface ProjectDetailsProps {
@@ -28,6 +28,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
   const [showRiskForm, setShowRiskForm] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [selectedRisk, setSelectedRisk] = useState<any>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     const loadProjectData = async () => {
@@ -69,38 +70,44 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
     e.preventDefault();
       if (submitting) return;
       setSubmitting(true);
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const payload: any = { type };
+    const formDataPayload = new FormData();
+    formDataPayload.append('type', type);
+
+    const rawFormData = new FormData(e.currentTarget as HTMLFormElement);
 
     if (type === 'CHECKIN') {
-      payload.title = 'Weekly Progress Update';
-      payload.description = (formData.get('summary') as string) || '';
-      payload.progressSummary = formData.get('summary');
-      payload.blockers = formData.get('blockers');
-      payload.confidenceLevel = Number(formData.get('confidence'));
-      payload.completionPercent = Number(formData.get('completion'));
+     formDataPayload.append('title', 'Weekly Progress Update');
+    formDataPayload.append('description', (rawFormData.get('summary') as string) || '');
+    formDataPayload.append('progressSummary', rawFormData.get('summary') as string);
+    formDataPayload.append('blockers', rawFormData.get('blockers') as string);
+    formDataPayload.append('confidenceLevel', rawFormData.get('confidence') as string);
+    formDataPayload.append('completionPercent', rawFormData.get('completion') as string);
+    if (selectedFile) {
+      formDataPayload.append('attachment', selectedFile);
+    }
     } else if (type === 'FEEDBACK') {
-      payload.title = 'Stakeholder Feedback';
-      payload.description = `Satisfaction: ${formData.get('satisfaction')}/5. Comments: ${formData.get('comments')}`;
-      payload.satisfactionRating = Number(formData.get('satisfaction'));
-      payload.clarityRating = Number(formData.get('clarity'));
-      payload.flagIssue = formData.get('flagIssue') === 'on';
-      payload.comments = formData.get('comments');
+      formDataPayload.append('title', 'Stakeholder Feedback');
+      formDataPayload.append('description', `Satisfaction: ${rawFormData.get('satisfaction')}/5. Comments: ${rawFormData.get('comments')}`);
+      formDataPayload.append('satisfactionRating', rawFormData.get('satisfaction') as string);
+      formDataPayload.append('clarityRating', rawFormData.get('clarity') as string);
+      formDataPayload.append('flagIssue', rawFormData.get('flagIssue') === 'on' ? 'true' : 'false');
+      formDataPayload.append('comments', rawFormData.get('comments') as string);
     } else if (type === 'RISK') {
-      payload.title = formData.get('title') as string;
-      payload.description = `Severity: ${formData.get('severity')}. Mitigation: ${formData.get('mitigation')}`;
-      payload.severity = formData.get('severity');
-      payload.mitigation = formData.get('mitigation');
+      formDataPayload.append('title', rawFormData.get('title') as string);
+      formDataPayload.append('description', `Severity: ${rawFormData.get('severity')}. Mitigation: ${rawFormData.get('mitigation')}`);
+      formDataPayload.append('severity', rawFormData.get('severity') as string);
+      formDataPayload.append('mitigation', rawFormData.get('mitigation') as string);
     }
 
     try {
-      await api.createEvent(projectId, payload);
+      await api.createEvent(projectId, formDataPayload);
       const [newProj, newEvents] = await Promise.all([
         api.getProject(projectId),
         api.getEvents(projectId)
       ]);
       setProject(newProj);
       setEvents(newEvents);
+      setSelectedFile(null);
       setShowCheckinForm(false);
       setShowFeedbackForm(false);
       setShowRiskForm(false);
@@ -268,6 +275,19 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                     <div><span className="font-bold text-slate-900">Confidence:</span> {checkin.confidenceLevel ?? '-'} /5</div>
                     <div><span className="font-bold text-slate-900">Blockers:</span> {checkin.blockers || 'None'}</div>
                   </div>
+                  {checkin.attachment && (
+                    <div className="mt-4 pt-3 border-t border-slate-100">
+                      <a 
+                        href={`${(import.meta as any).env?.VITE_API_URL || 'http://localhost:5000'}${checkin.attachment}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-indigo-600 font-bold text-xs hover:underline"
+                      >
+                        <Paperclip size={14} /> 
+                        View Attached Document
+                      </a>
+                    </div>
+                  )}
                   {checkin.progressSummary && (
                     <p className="text-sm text-slate-600"><span className="font-bold text-slate-900">Summary:</span> {checkin.progressSummary}</p>
                   )}
@@ -418,6 +438,28 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                   <option value="1">Confidence: 1</option>
                 </select>
                 <input name="completion" type="number" min="0" max="100" className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Estimated completion %" required />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Attachment (PDF, DOC)
+                </label>
+                <div className="flex items-center gap-4 p-3 bg-slate-50 border rounded-xl">
+                  <input 
+                    type="file" 
+                    className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    accept=".pdf,.doc,.docx"
+                  />
+                  {selectedFile && (
+                    <button 
+                      type="button" 
+                      onClick={() => setSelectedFile(null)}
+                      className="text-rose-500 text-xs font-bold"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex gap-4">
                 <button type="button" onClick={() => setShowCheckinForm(false)} className="flex-1 py-4 font-bold text-slate-500">Cancel</button>

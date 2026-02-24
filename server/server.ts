@@ -4,6 +4,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import multer  from 'multer';
+import path from 'path';
+import fs from 'fs';  
 import { User } from './models/User.js';
 import { Project } from './models/Project.js';
 import { Event } from './models/Event.js';
@@ -11,8 +14,26 @@ import { verifyToken } from './middleware/auth.js';
 
 dotenv.config();
 const app = express();
+const rootUploadsPath = path.join(__dirname, '..', 'uploads');
+app.use('/uploads', express.static(rootUploadsPath));
 app.use(express.json() as any);
 app.use(cors());
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // Check/Create folder at the root level
+    if (!fs.existsSync(rootUploadsPath)) {
+      fs.mkdirSync(rootUploadsPath, { recursive: true });
+    }
+    cb(null, rootUploadsPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const MONGODB_URI = process.env.MONGODB_URI;
