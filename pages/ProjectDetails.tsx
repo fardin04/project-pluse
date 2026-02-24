@@ -28,6 +28,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
   const [showRiskForm, setShowRiskForm] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [selectedRisk, setSelectedRisk] = useState<any>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     const loadProjectData = async () => {
@@ -68,80 +69,66 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
   const handleAction = async (e: React.FormEvent, type: string) => {
     e.preventDefault();
     if (submitting) return;
+    
+    console.log("🚀 Submit started for type:", type);
     setSubmitting(true);
 
-    const formDataPayload = new FormData();
-    const form = e.currentTarget as HTMLFormElement;
-
     try {
-      if (type === 'CHECKIN') {
-        // Manually grab values using DOM queries (more robust)
-        const summary = (form.querySelector('[name="summary"]') as HTMLTextAreaElement).value;
-        const blockers = (form.querySelector('[name="blockers"]') as HTMLTextAreaElement)?.value || "";
-        const confidence = (form.querySelector('[name="confidence"]') as HTMLSelectElement).value;
-        const completion = (form.querySelector('[name="completion"]') as HTMLInputElement).value;
-        const docLink = (form.querySelector('[name="docLink"]') as HTMLInputElement).value || "";
+      const form = e.currentTarget as HTMLFormElement;
+      const data = new FormData(form);
 
-        // Append values one by one
-        formDataPayload.append('type', type);
-        formDataPayload.append('title', 'Weekly Progress Update');
-        formDataPayload.append('description', summary);
-        formDataPayload.append('progressSummary', summary);
-        formDataPayload.append('blockers', blockers);
-        formDataPayload.append('confidenceLevel', confidence);
-        formDataPayload.append('completionPercent', completion);
+      // DEBUG: Let's see if the code actually reaches this point
+      console.log("📦 Form Data captured. Summary:", data.get('summary'));
 
-        // Send Google Drive link separately
-        if (docLink) {
-          formDataPayload.append('attachmentUrl', docLink);
-        }
-      } else if (type === 'FEEDBACK') {
-        const satisfaction = (form.querySelector('[name="satisfaction"]') as HTMLSelectElement).value;
-        const clarity = (form.querySelector('[name="clarity"]') as HTMLSelectElement).value;
-        const comments = (form.querySelector('[name="comments"]') as HTMLTextAreaElement).value;
-        const flagIssue = (form.querySelector('[name="flagIssue"]') as HTMLInputElement)?.checked;
-
-        formDataPayload.append('type', type);
-        formDataPayload.append('title', 'Stakeholder Feedback');
-        formDataPayload.append('description', `Satisfaction: ${satisfaction}/5. Comments: ${comments}`);
-        formDataPayload.append('satisfactionRating', satisfaction);
-        formDataPayload.append('clarityRating', clarity);
-        formDataPayload.append('flagIssue', flagIssue ? 'true' : 'false');
-        formDataPayload.append('comments', comments);
-      } else if (type === 'RISK') {
-        const title = (form.querySelector('[name="title"]') as HTMLInputElement).value;
-        const severity = (form.querySelector('[name="severity"]') as HTMLSelectElement).value;
-        const mitigation = (form.querySelector('[name="mitigation"]') as HTMLTextAreaElement).value;
-
-        formDataPayload.append('type', type);
-        formDataPayload.append('title', title);
-        formDataPayload.append('description', `Severity: ${severity}. Mitigation: ${mitigation}`);
-        formDataPayload.append('severity', severity);
-        formDataPayload.append('mitigation', mitigation);
+      // Manual payload construction to ensure NO fields are null/undefined
+      const formDataPayload = new FormData();
+      formDataPayload.append('type', type);
+      formDataPayload.append('title', 'Weekly Update');
+      
+      // We use the 'summary' field for both description and progressSummary
+      const summaryText = (data.get('summary') as string) || "No summary provided";
+      formDataPayload.append('description', summaryText);
+      formDataPayload.append('progressSummary', summaryText);
+      
+      // Add your extra field safely
+      const extraField = (data.get('progressSummary') as string) || "";
+      if (extraField) {
+        formDataPayload.append('details', extraField); 
       }
 
-      console.log("🚀 Sending to backend...");
-      await api.createEvent(projectId, formDataPayload);
+      formDataPayload.append('confidenceLevel', (data.get('confidence') as string) || "5");
+      formDataPayload.append('completionPercent', (data.get('completion') as string) || "0");
+      formDataPayload.append('blockers', (data.get('blockers') as string) || "None");
 
-      // Refresh data
+      if (selectedFile) {
+        formDataPayload.append('attachment', selectedFile);
+      }
+
+      console.log("📡 Sending to API now...");
+      const response = await api.createEvent(projectId, formDataPayload);
+      console.log("✅ Success!", response);
+
+      // Refresh everything
       const [newProj, newEvents] = await Promise.all([
         api.getProject(projectId),
         api.getEvents(projectId)
       ]);
+      
       setProject(newProj);
       setEvents(newEvents);
-
-      // Cleanup
       setShowCheckinForm(false);
       setShowFeedbackForm(false);
       setShowRiskForm(false);
+      setSelectedFile(null);
       onUpdate();
-      alert('✅ Submitted successfully!');
+      alert("Submitted successfully!");
+
     } catch (err: any) {
-      console.error('Error:', err);
-      alert('Submission failed: ' + err.message);
+      console.error("❌ CRASHED:", err);
+      alert("Error: " + err.message);
     } finally {
       setSubmitting(false);
+      console.log("🏁 Submitting state reset.");
     }
   };
 
@@ -483,17 +470,14 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
               </div>
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Reference Link (Google Drive / Dropbox)
+                  Progress Details
                 </label>
                 <input 
-                  name="docLink" 
-                  type="string" 
-                  className="w-full p-4 bg-slate-50 border rounded-2xl" 
-                  placeholder="https://drive.google.com/..." 
+                  name="progressSummary" 
+                  type="text" 
+                  className="w-full p-3 bg-slate-50 border rounded-xl" 
+                  placeholder="What did you achieve?" 
                 />
-                <p className="text-[10px] text-slate-400">
-                  Tip: Upload your PDF to Drive and paste the link here to avoid timeouts.
-                </p>
               </div>
               <div className="flex gap-4">
                 <button type="button" onClick={() => setShowCheckinForm(false)} className="flex-1 py-4 font-bold text-slate-500">Cancel</button>
