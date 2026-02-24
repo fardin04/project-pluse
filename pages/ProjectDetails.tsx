@@ -67,23 +67,29 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
 
   const handleAction = async (e: React.FormEvent, type: string) => {
     e.preventDefault();
-      if (submitting) return;
-      setSubmitting(true);
+    if (submitting) return;
+    setSubmitting(true);
+
     const formDataPayload = new FormData();
     formDataPayload.append('type', type);
 
     const rawFormData = new FormData(e.currentTarget as HTMLFormElement);
 
     if (type === 'CHECKIN') {
-      const summary = (rawFormData.get('summary') as string) || '';
-      const docLink = (rawFormData.get('docLink') as string) || '';
+      const summary = rawFormData.get('summary') as string;
+      const docLink = rawFormData.get('docLink') as string; // The URL from your new input
 
       formDataPayload.append('title', 'Weekly Progress Update');
-      formDataPayload.append('description', docLink ? `${summary}\n\nReference: ${docLink}` : summary);
+      formDataPayload.append('description', summary);
       formDataPayload.append('progressSummary', summary);
-      formDataPayload.append('blockers', (rawFormData.get('blockers') as string) || 'None');
-      formDataPayload.append('confidenceLevel', (rawFormData.get('confidence') as string) || '0');
-      formDataPayload.append('completionPercent', (rawFormData.get('completion') as string) || '0');
+      formDataPayload.append('blockers', rawFormData.get('blockers') as string);
+      formDataPayload.append('confidenceLevel', rawFormData.get('confidence') as string);
+      formDataPayload.append('completionPercent', rawFormData.get('completion') as string);
+
+      // We send the link to 'attachmentUrl' instead of a file to 'attachment'
+      if (docLink) {
+        formDataPayload.append('attachmentUrl', docLink);
+      }
     } else if (type === 'FEEDBACK') {
       formDataPayload.append('title', 'Stakeholder Feedback');
       formDataPayload.append('description', `Satisfaction: ${rawFormData.get('satisfaction')}/5. Comments: ${rawFormData.get('comments')}`);
@@ -100,23 +106,22 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
 
     try {
       await api.createEvent(projectId, formDataPayload);
+
+      // Refresh UI
       const [newProj, newEvents] = await Promise.all([
         api.getProject(projectId),
         api.getEvents(projectId)
       ]);
       setProject(newProj);
       setEvents(newEvents);
+
       setShowCheckinForm(false);
       setShowFeedbackForm(false);
       setShowRiskForm(false);
       onUpdate();
+      alert('✅ Submitted successfully via Cloud Link!');
     } catch (err: any) {
-      const errorMessage = err.message || "Failed to submit update";
-      if (errorMessage.includes("Weekly check-in already submitted")) {
-        alert("You've already submitted a weekly check-in this week. Please try again next week.");
-      } else {
-        alert(errorMessage);
-      }
+      alert('Submission failed: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -276,6 +281,19 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                   </div>
                   {checkin.progressSummary && (
                     <p className="text-sm text-slate-600"><span className="font-bold text-slate-900">Summary:</span> {checkin.progressSummary}</p>
+                  )}
+                  {checkin.attachmentUrl && (
+                    <div className="mt-4 pt-3 border-t border-slate-100">
+                      <a 
+                        href={checkin.attachmentUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-blue-600 font-bold text-xs hover:underline"
+                      >
+                        <Paperclip size={14} /> 
+                        📂 View Shared Document (Google Drive)
+                      </a>
+                    </div>
                   )}
                 </div>
               ))}
@@ -447,14 +465,17 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
               </div>
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Reference Document Link (Optional)
+                  Reference Link (Google Drive / Dropbox)
                 </label>
                 <input 
                   name="docLink" 
-                  type="text" 
-                  className="w-full p-3 bg-slate-50 border rounded-xl" 
-                  placeholder="Paste the Google Drive link to the file here..." 
+                  type="url" 
+                  className="w-full p-4 bg-slate-50 border rounded-2xl" 
+                  placeholder="https://drive.google.com/..." 
                 />
+                <p className="text-[10px] text-slate-400">
+                  Tip: Upload your PDF to Drive and paste the link here to avoid timeouts.
+                </p>
               </div>
               <div className="flex gap-4">
                 <button type="button" onClick={() => setShowCheckinForm(false)} className="flex-1 py-4 font-bold text-slate-500">Cancel</button>
