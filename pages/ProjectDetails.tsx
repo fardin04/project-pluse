@@ -446,7 +446,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                 <div className="flex items-center gap-4 p-3 bg-slate-50 border rounded-xl">
                   <input 
                     type="file" 
-                    className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                    className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
                     onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                     accept=".pdf,.doc,.docx"
                   />
