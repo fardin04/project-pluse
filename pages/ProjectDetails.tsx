@@ -7,7 +7,7 @@ import {
 import { api } from '../services/apiService';
 import { 
   ArrowLeft, Calendar, AlertCircle, 
-  MessageSquare, TrendingUp, History, Flag, Plus, Check, ClipboardList, Loader2 
+  MessageSquare, TrendingUp, History, Flag, Plus, Check, ClipboardList, Loader2, Paperclip 
 } from 'lucide-react';
 
 interface ProjectDetailsProps {
@@ -22,7 +22,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'checkins' | 'feedback' | 'risks' | 'logs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'checkins' | 'resources' | 'feedback' | 'risks' | 'logs'>('overview');
   const [showCheckinForm, setShowCheckinForm] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [showRiskForm, setShowRiskForm] = useState(false);
@@ -69,32 +69,37 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
     e.preventDefault();
       if (submitting) return;
       setSubmitting(true);
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const payload: any = { type };
+    const formDataPayload = new FormData();
+    formDataPayload.append('type', type);
+
+    const rawFormData = new FormData(e.currentTarget as HTMLFormElement);
 
     if (type === 'CHECKIN') {
-      payload.title = 'Weekly Progress Update';
-      payload.description = (formData.get('summary') as string) || '';
-      payload.progressSummary = formData.get('summary');
-      payload.blockers = formData.get('blockers');
-      payload.confidenceLevel = Number(formData.get('confidence'));
-      payload.completionPercent = Number(formData.get('completion'));
+      const summary = (rawFormData.get('summary') as string) || '';
+      const docLink = (rawFormData.get('docLink') as string) || '';
+
+      formDataPayload.append('title', 'Weekly Progress Update');
+      formDataPayload.append('description', docLink ? `${summary}\n\nReference: ${docLink}` : summary);
+      formDataPayload.append('progressSummary', summary);
+      formDataPayload.append('blockers', (rawFormData.get('blockers') as string) || 'None');
+      formDataPayload.append('confidenceLevel', (rawFormData.get('confidence') as string) || '0');
+      formDataPayload.append('completionPercent', (rawFormData.get('completion') as string) || '0');
     } else if (type === 'FEEDBACK') {
-      payload.title = 'Stakeholder Feedback';
-      payload.description = `Satisfaction: ${formData.get('satisfaction')}/5. Comments: ${formData.get('comments')}`;
-      payload.satisfactionRating = Number(formData.get('satisfaction'));
-      payload.clarityRating = Number(formData.get('clarity'));
-      payload.flagIssue = formData.get('flagIssue') === 'on';
-      payload.comments = formData.get('comments');
+      formDataPayload.append('title', 'Stakeholder Feedback');
+      formDataPayload.append('description', `Satisfaction: ${rawFormData.get('satisfaction')}/5. Comments: ${rawFormData.get('comments')}`);
+      formDataPayload.append('satisfactionRating', rawFormData.get('satisfaction') as string);
+      formDataPayload.append('clarityRating', rawFormData.get('clarity') as string);
+      formDataPayload.append('flagIssue', rawFormData.get('flagIssue') === 'on' ? 'true' : 'false');
+      formDataPayload.append('comments', rawFormData.get('comments') as string);
     } else if (type === 'RISK') {
-      payload.title = formData.get('title') as string;
-      payload.description = `Severity: ${formData.get('severity')}. Mitigation: ${formData.get('mitigation')}`;
-      payload.severity = formData.get('severity');
-      payload.mitigation = formData.get('mitigation');
+      formDataPayload.append('title', rawFormData.get('title') as string);
+      formDataPayload.append('description', `Severity: ${rawFormData.get('severity')}. Mitigation: ${rawFormData.get('mitigation')}`);
+      formDataPayload.append('severity', rawFormData.get('severity') as string);
+      formDataPayload.append('mitigation', rawFormData.get('mitigation') as string);
     }
 
     try {
-      await api.createEvent(projectId, payload);
+      await api.createEvent(projectId, formDataPayload);
       const [newProj, newEvents] = await Promise.all([
         api.getProject(projectId),
         api.getEvents(projectId)
@@ -193,6 +198,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
         {[
           { id: 'overview', icon: TrendingUp, label: 'Performance' },
           { id: 'checkins', icon: History, label: 'Weekly Updates' },
+          { id: 'resources', icon: Paperclip, label: 'Shared Drive' },
           { id: 'feedback', icon: MessageSquare, label: 'Client Voices' },
           { id: 'risks', icon: AlertCircle, label: `Risks (${openRisks.length})` },
           { id: 'logs', icon: ClipboardList, label: 'Activity Logs' },
@@ -256,7 +262,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                     <div>
                       <p className="text-xs font-bold uppercase text-slate-400">Weekly Update</p>
                       <h4 className="text-lg font-bold text-slate-900">{checkin.title}</h4>
-                      <p className="text-sm text-slate-600 mt-2">{checkin.description}</p>
+                      <p className="text-sm text-slate-600 mt-2">{checkin.description || checkin.progressSummary}</p>
                     </div>
                     <div className="text-right text-[10px] font-bold text-slate-400 uppercase">
                       {new Date(checkin.timestamp).toLocaleDateString()}<br/>
@@ -273,6 +279,26 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {activeTab === 'resources' && (
+            <div className="bg-white p-10 rounded-3xl border-2 border-dashed border-slate-200 text-center space-y-4">
+              <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
+                <Paperclip className="text-blue-600" size={32} />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900">Project Cloud Storage</h3>
+              <p className="text-slate-500 max-w-sm mx-auto">
+                To avoid upload errors, please upload all PDFs, Schedules, and large documents to our shared Google Drive folder.
+              </p>
+              <a 
+                href={project.driveLink || 'https://drive.google.com'} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg transition-transform hover:scale-105"
+              >
+                Open Google Drive Folder
+              </a>
             </div>
           )}
 
@@ -418,6 +444,17 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                   <option value="1">Confidence: 1</option>
                 </select>
                 <input name="completion" type="number" min="0" max="100" className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Estimated completion %" required />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Reference Document Link (Optional)
+                </label>
+                <input 
+                  name="docLink" 
+                  type="text" 
+                  className="w-full p-3 bg-slate-50 border rounded-xl" 
+                  placeholder="Paste the Google Drive link to the file here..." 
+                />
               </div>
               <div className="flex gap-4">
                 <button type="button" onClick={() => setShowCheckinForm(false)} className="flex-1 py-4 font-bold text-slate-500">Cancel</button>

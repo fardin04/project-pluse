@@ -43,6 +43,7 @@ export interface Project {
   progress: number; // 0-100
   status: ProjectStatus;
   healthScore: number; // 0-100
+  driveLink?: string;
 }
 
 export interface WeeklyCheckIn {
