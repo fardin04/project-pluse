@@ -7,7 +7,7 @@
   }
 
   // Helper to create fetch with timeout
-  const fetchWithTimeout = (url: string, options: any = {}, timeout = 120000) => {
+  const fetchWithTimeout = (url: string, options: any = {}, timeout = 30000) => {
     return Promise.race([
       fetch(url, options),
       new Promise<Response>((_, reject) =>
@@ -17,14 +17,14 @@
   };
 
   // Helper to retry failed requests (useful for cold starts)
-  const retryFetch = async (url: string, options: any = {}, retries = 2) => {
+  const retryFetch = async (url: string, options: any = {}, retries = 1) => {
     for (let i = 0; i < retries; i++) {
       try {
         return await fetchWithTimeout(url, options);
       } catch (error) {
         if (i === retries - 1) throw error;
         console.log(`Retry ${i + 1}/${retries} after error:`, error);
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3s before retry
       }
     }
     throw new Error('Max retries exceeded');
