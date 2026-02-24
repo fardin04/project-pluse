@@ -17,10 +17,10 @@
   };
 
   // Helper to retry failed requests (useful for cold starts)
-  const retryFetch = async (url: string, options: any = {}, retries = 1) => {
+  const retryFetch = async (url: string, options: any = {}, retries = 1, timeout = 30000) => {
     for (let i = 0; i < retries; i++) {
       try {
-        return await fetchWithTimeout(url, options);
+        return await fetchWithTimeout(url, options, timeout);
       } catch (error) {
         if (i === retries - 1) throw error;
         console.log(`Retry ${i + 1}/${retries} after error:`, error);
@@ -36,11 +36,18 @@
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...options.headers
     };
-    if (!(options.body instanceof FormData)) {
+    
+    // Detect file upload and increase timeout
+    const isFileUpload = options.body instanceof FormData;
+    const timeout = isFileUpload ? 90000 : 30000; // 90s for files, 30s for regular requests
+    
+    if (!isFileUpload) {
       headers['Content-Type'] = 'application/json';
     }
 
-    const response = await retryFetch(`${API_URL}${endpoint}`, { ...options, headers });
+    console.log(`📡 API Call: ${endpoint}${isFileUpload ? ' (File Upload - 90s timeout)' : ''}`);
+    
+    const response = await retryFetch(`${API_URL}${endpoint}`, { ...options, headers }, 1, timeout);
     if (!response.ok) {
       let errorMessage = 'API request failed';
       try {

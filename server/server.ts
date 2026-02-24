@@ -275,6 +275,13 @@ app.get('/api/projects/:id/events', verifyToken, async (req: any, res) => {
 
 app.post('/api/projects/:id/events', verifyToken, upload.single('attachment'), async (req: any, res) => {
   try {
+    console.log('📥 Received event submission:', {
+      type: req.body.type,
+      hasFile: !!req.file,
+      fileName: req.file?.filename,
+      fileSize: req.file?.size
+    });
+    
     const { type } = req.body;
     const projectId = req.params.id;
     const userId = req.user.id;
@@ -342,6 +349,11 @@ app.post('/api/projects/:id/events', verifyToken, upload.single('attachment'), a
 
     const event = new Event(payload);
     await event.save();
+    console.log('✅ Event saved successfully:', { 
+      eventId: event._id, 
+      type: event.type,
+      hasAttachment: !!event.attachmentUrl 
+    });
 
   // Auto-create a risk when client flags an issue in feedback so employees can resolve it
   if (type === 'FEEDBACK' && payload.flagIssue) {
