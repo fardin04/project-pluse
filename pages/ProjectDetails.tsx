@@ -7,7 +7,7 @@ import {
 import { api } from '../services/apiService';
 import { 
   ArrowLeft, Calendar, AlertCircle, 
-  MessageSquare, TrendingUp, History, Flag, Plus, Check, ClipboardList, Loader2, Paperclip 
+  MessageSquare, TrendingUp, History, Flag, Plus, Check, ClipboardList, Loader2 
 } from 'lucide-react';
 
 interface ProjectDetailsProps {
@@ -28,7 +28,6 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
   const [showRiskForm, setShowRiskForm] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [selectedRisk, setSelectedRisk] = useState<any>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     const loadProjectData = async () => {
@@ -64,78 +63,54 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
   const riskResolutions = events.filter(e => e.type === 'STATUS_CHANGE' && e.title?.includes('Risk Resolved'));
 
   const isEmployee = project.employeeIds?.some((e: any) => (e._id || e) === user.id);
-  const isClient = (project.clientId?._id || project.clientId) === user.id; 
+  const isClient = (project.clientId?._id || project.clientId) === user.id;
 
   const handleAction = async (e: React.FormEvent, type: string) => {
     e.preventDefault();
       if (submitting) return;
       setSubmitting(true);
-    const formDataPayload = new FormData();
-    formDataPayload.append('type', type);
-
-    const rawFormData = new FormData(e.currentTarget as HTMLFormElement);
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const payload: any = { type };
 
     if (type === 'CHECKIN') {
-    const summary = rawFormData.get('summary') as string;
-    const blockers = rawFormData.get('blockers') as string;
-    
-    formDataPayload.append('title', 'Weekly Progress Update');
-    // Ensure 'description' is set, as your UI displays this in the Weekly Updates tab
-    formDataPayload.append('description', summary || ''); 
-    formDataPayload.append('progressSummary', summary || '');
-    formDataPayload.append('blockers', blockers || 'None');
-    formDataPayload.append('confidenceLevel', rawFormData.get('confidence') as string);
-    formDataPayload.append('completionPercent', rawFormData.get('completion') as string);
-
-    if (selectedFile) {
-        // Ensure the key matches 'attachment' because your server uses upload.single('attachment')
-        formDataPayload.append('attachment', selectedFile);
-    } else {
-      console.log('📎 No file selected');
-    }
+      payload.title = 'Weekly Progress Update';
+      payload.description = (formData.get('summary') as string) || '';
+      payload.progressSummary = formData.get('summary');
+      payload.blockers = formData.get('blockers');
+      payload.confidenceLevel = Number(formData.get('confidence'));
+      payload.completionPercent = Number(formData.get('completion'));
     } else if (type === 'FEEDBACK') {
-      formDataPayload.append('title', 'Stakeholder Feedback');
-      formDataPayload.append('description', `Satisfaction: ${rawFormData.get('satisfaction')}/5. Comments: ${rawFormData.get('comments')}`);
-      formDataPayload.append('satisfactionRating', rawFormData.get('satisfaction') as string);
-      formDataPayload.append('clarityRating', rawFormData.get('clarity') as string);
-      formDataPayload.append('flagIssue', rawFormData.get('flagIssue') === 'on' ? 'true' : 'false');
-      formDataPayload.append('comments', rawFormData.get('comments') as string);
+      payload.title = 'Stakeholder Feedback';
+      payload.description = `Satisfaction: ${formData.get('satisfaction')}/5. Comments: ${formData.get('comments')}`;
+      payload.satisfactionRating = Number(formData.get('satisfaction'));
+      payload.clarityRating = Number(formData.get('clarity'));
+      payload.flagIssue = formData.get('flagIssue') === 'on';
+      payload.comments = formData.get('comments');
     } else if (type === 'RISK') {
-      formDataPayload.append('title', rawFormData.get('title') as string);
-      formDataPayload.append('description', `Severity: ${rawFormData.get('severity')}. Mitigation: ${rawFormData.get('mitigation')}`);
-      formDataPayload.append('severity', rawFormData.get('severity') as string);
-      formDataPayload.append('mitigation', rawFormData.get('mitigation') as string);
+      payload.title = formData.get('title') as string;
+      payload.description = `Severity: ${formData.get('severity')}. Mitigation: ${formData.get('mitigation')}`;
+      payload.severity = formData.get('severity');
+      payload.mitigation = formData.get('mitigation');
     }
 
     try {
-      console.log('🚀 Submitting event to backend...');
-      const response = await api.createEvent(projectId, formDataPayload);
-      console.log('✅ Event created:', response);
-      
+      await api.createEvent(projectId, payload);
       const [newProj, newEvents] = await Promise.all([
         api.getProject(projectId),
         api.getEvents(projectId)
       ]);
       setProject(newProj);
       setEvents(newEvents);
-      setSelectedFile(null);
       setShowCheckinForm(false);
       setShowFeedbackForm(false);
       setShowRiskForm(false);
       onUpdate();
-      
-      if (selectedFile) {
-        alert('✅ Check-in submitted successfully with attachment!');
-      }
     } catch (err: any) {
-      console.error('❌ Error submitting event:', err);
       const errorMessage = err.message || "Failed to submit update";
       if (errorMessage.includes("Weekly check-in already submitted")) {
         alert("You've already submitted a weekly check-in this week. Please try again next week.");
-      } else if (errorMessage.includes('timeout')) {
-        alert('⏱️ Server timeout. Your backend may be sleeping. Please wait 30 seconds and try again.');
       } else {
-        alert('❌ Error: ' + errorMessage);
+        alert(errorMessage);
       }
     } finally {
       setSubmitting(false);
@@ -281,7 +256,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                     <div>
                       <p className="text-xs font-bold uppercase text-slate-400">Weekly Update</p>
                       <h4 className="text-lg font-bold text-slate-900">{checkin.title}</h4>
-                      <p className="text-sm text-slate-600 mt-2">{checkin.description || checkin.progressSummary}</p>
+                      <p className="text-sm text-slate-600 mt-2">{checkin.description}</p>
                     </div>
                     <div className="text-right text-[10px] font-bold text-slate-400 uppercase">
                       {new Date(checkin.timestamp).toLocaleDateString()}<br/>
@@ -293,19 +268,6 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                     <div><span className="font-bold text-slate-900">Confidence:</span> {checkin.confidenceLevel ?? '-'} /5</div>
                     <div><span className="font-bold text-slate-900">Blockers:</span> {checkin.blockers || 'None'}</div>
                   </div>
-                  {checkin.attachmentUrl && (
-                    <div className="mt-4 pt-3 border-t border-slate-100">
-                      <a 
-                        href={checkin.attachmentUrl.startsWith('http') ? checkin.attachmentUrl : `${import.meta.env.VITE_API_URL}${checkin.attachmentUrl}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-indigo-600 font-bold text-xs hover:underline"
-                      >
-                        <Paperclip size={14} /> 
-                        📄 {checkin.attachmentUrl.split('/').pop() || 'View Attached Document'}
-                      </a>
-                    </div>
-                  )}
                   {checkin.progressSummary && (
                     <p className="text-sm text-slate-600"><span className="font-bold text-slate-900">Summary:</span> {checkin.progressSummary}</p>
                   )}
@@ -457,34 +419,8 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                 </select>
                 <input name="completion" type="number" min="0" max="100" className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Estimated completion %" required />
               </div>
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Attachment (PDF, DOC) {selectedFile && `- ✓ ${selectedFile.name}`}
-                </label>
-                <div className="flex items-center gap-4 p-3 bg-slate-50 border rounded-xl">
-                  <input 
-                    type="file" 
-                    className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null;
-                      setSelectedFile(file);
-                      if (file) console.log('📎 File selected:', file.name);
-                    }}
-                    accept=".pdf,.doc,.docx"
-                  />
-                  {selectedFile && (
-                    <button 
-                      type="button" 
-                      onClick={() => setSelectedFile(null)}
-                      className="text-rose-500 text-xs font-bold"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-              </div>
               <div className="flex gap-4">
-                <button type="button" onClick={() => { setShowCheckinForm(false); setSelectedFile(null); }} className="flex-1 py-4 font-bold text-slate-500">Cancel</button>
+                <button type="button" onClick={() => setShowCheckinForm(false)} className="flex-1 py-4 font-bold text-slate-500">Cancel</button>
                 <button type="submit" disabled={submitting} className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold rounded-2xl transition-all">
                   {submitting ? 'Submitting...' : 'Submit Update'}
                 </button>
