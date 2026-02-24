@@ -1,6 +1,30 @@
 
   const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
 
+  // Helper to create fetch with timeout
+  const fetchWithTimeout = (url: string, options: any = {}, timeout = 120000) => {
+    return Promise.race([
+      fetch(url, options),
+      new Promise<Response>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout - server may be waking up from sleep')), timeout)
+      )
+    ]);
+  };
+
+  // Helper to retry failed requests (useful for cold starts)
+  const retryFetch = async (url: string, options: any = {}, retries = 2) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await fetchWithTimeout(url, options);
+      } catch (error) {
+        if (i === retries - 1) throw error;
+        console.log(`Retry ${i + 1}/${retries} after error:`, error);
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
+      }
+    }
+    throw new Error('Max retries exceeded');
+  };
+
   const fetcher = async (endpoint: string, options: any = {}) => {
     const token = localStorage.getItem('pulse_token');
     const headers: any = {
@@ -11,7 +35,7 @@
       headers['Content-Type'] = 'application/json';
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+    const response = await retryFetch(`${API_URL}${endpoint}`, { ...options, headers });
     if (!response.ok) {
       let errorMessage = 'API request failed';
       try {

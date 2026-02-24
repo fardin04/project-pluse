@@ -17,6 +17,13 @@ import { verifyToken } from './middleware/auth.js';
 dotenv.config();
 const app = express();
 
+// Increase timeout for cold starts on Render
+app.use((req, res, next) => {
+  req.setTimeout(120000); // 2 minutes
+  res.setTimeout(120000); // 2 minutes
+  next();
+});
+
 // This safely gets the current directory in ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -45,6 +52,15 @@ app.use(cors({
 }));
 
 app.options('*', cors());
+
+// Health check endpoint (helps keep server awake)
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime() 
+  });
+});
 
 // MULTER STORAGE
 const storage = multer.diskStorage({
@@ -348,8 +364,11 @@ app.post('/api/projects/:id/events', verifyToken, upload.single('attachment'), a
     await updateProjectHealth(projectId);
     res.status(201).json(event);
   } catch (error) {
-    console.error('Route Error:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Route Error [POST /api/projects/:id/events]:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error', 
+      message: error instanceof Error ? error.message : 'Unknown error' 
+    });
   }
 });
 
