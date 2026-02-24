@@ -76,15 +76,20 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
     const rawFormData = new FormData(e.currentTarget as HTMLFormElement);
 
     if (type === 'CHECKIN') {
-     formDataPayload.append('title', 'Weekly Progress Update');
-    formDataPayload.append('description', (rawFormData.get('summary') as string) || '');
-    formDataPayload.append('progressSummary', rawFormData.get('summary') as string);
-    formDataPayload.append('blockers', rawFormData.get('blockers') as string);
+    const summary = rawFormData.get('summary') as string;
+    const blockers = rawFormData.get('blockers') as string;
+    
+    formDataPayload.append('title', 'Weekly Progress Update');
+    // Ensure 'description' is set, as your UI displays this in the Weekly Updates tab
+    formDataPayload.append('description', summary || ''); 
+    formDataPayload.append('progressSummary', summary || '');
+    formDataPayload.append('blockers', blockers || 'None');
     formDataPayload.append('confidenceLevel', rawFormData.get('confidence') as string);
     formDataPayload.append('completionPercent', rawFormData.get('completion') as string);
+
     if (selectedFile) {
-      console.log('📎 Uploading file:', selectedFile.name, selectedFile.size, 'bytes');
-      formDataPayload.append('attachment', selectedFile);
+        // Ensure the key matches 'attachment' because your server uses upload.single('attachment')
+        formDataPayload.append('attachment', selectedFile);
     } else {
       console.log('📎 No file selected');
     }
@@ -276,7 +281,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                     <div>
                       <p className="text-xs font-bold uppercase text-slate-400">Weekly Update</p>
                       <h4 className="text-lg font-bold text-slate-900">{checkin.title}</h4>
-                      <p className="text-sm text-slate-600 mt-2">{checkin.description}</p>
+                      <p className="text-sm text-slate-600 mt-2">{checkin.description || checkin.progressSummary}</p>
                     </div>
                     <div className="text-right text-[10px] font-bold text-slate-400 uppercase">
                       {new Date(checkin.timestamp).toLocaleDateString()}<br/>
@@ -291,7 +296,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                   {checkin.attachmentUrl && (
                     <div className="mt-4 pt-3 border-t border-slate-100">
                       <a 
-                        href={`${import.meta.env.VITE_API_URL}${checkin.attachmentUrl}`} 
+                        href={checkin.attachmentUrl.startsWith('http') ? checkin.attachmentUrl : `${import.meta.env.VITE_API_URL}${checkin.attachmentUrl}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 text-indigo-600 font-bold text-xs hover:underline"

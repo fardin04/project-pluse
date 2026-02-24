@@ -31,35 +31,48 @@
   };
 
   const fetcher = async (endpoint: string, options: any = {}) => {
-    const token = localStorage.getItem('pulse_token');
-    const headers: any = {
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      ...options.headers
-    };
-    
-    // Detect file upload and increase timeout
-    const isFileUpload = options.body instanceof FormData;
-    const timeout = isFileUpload ? 90000 : 30000; // 90s for files, 30s for regular requests
-    
-    if (!isFileUpload) {
-      headers['Content-Type'] = 'application/json';
-    }
-
-    console.log(`📡 API Call: ${endpoint}${isFileUpload ? ' (File Upload - 90s timeout)' : ''}`);
-    
-    const response = await retryFetch(`${API_URL}${endpoint}`, { ...options, headers }, 1, timeout);
-    if (!response.ok) {
-      let errorMessage = 'API request failed';
-      try {
-        const error = await response.json();
-        errorMessage = error.message || error.error || errorMessage;
-      } catch (e) {
-        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      }
-      throw new Error(errorMessage);
-    }
-    return response.json();
+  const token = localStorage.getItem('pulse_token');
+  
+  // Create a clean headers object
+  const headers: any = {
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...options.headers
   };
+  
+  const isFileUpload = options.body instanceof FormData;
+  
+  // FIX 1: Match the 2-minute server timeout (120000ms)
+  const timeout = isFileUpload ? 120000 : 30000; 
+  
+  // FIX 2: Strict check for Content-Type
+  if (!isFileUpload) {
+    headers['Content-Type'] = 'application/json';
+  } else {
+    // When sending FormData, the browser MUST set the Content-Type 
+    // including the unique "boundary" string. 
+    // Manually setting it to 'multipart/form-data' or leaving it as JSON will break it.
+    delete headers['Content-Type'];
+  }
+
+  console.log(`📡 API Call: ${endpoint}${isFileUpload ? ' (File Upload - 120s timeout)' : ''}`);
+  
+  // Increase retries to 2 for file uploads to handle Render's "cold start"
+  const retries = isFileUpload ? 2 : 1;
+  
+  const response = await retryFetch(`${API_URL}${endpoint}`, { ...options, headers }, retries, timeout);
+  
+  if (!response.ok) {
+    let errorMessage = 'API request failed';
+    try {
+      const error = await response.json();
+      errorMessage = error.message || error.error || errorMessage;
+    } catch (e) {
+      errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+    }
+    throw new Error(errorMessage);
+  }
+  return response.json();
+};
 
   export const api = {
     getToken: () => localStorage.getItem('pulse_token'),
