@@ -29,17 +29,24 @@ if (!fs.existsSync(uploadsPath)) {
   fs.mkdirSync(uploadsPath, { recursive: true });
 }
 
+// Serve uploaded files
 app.use('/uploads', express.static(uploadsPath));
-app.use(express.json() as any);
+
+// 🔥 VERY IMPORTANT FOR FORMDATA
+app.use(express.json({ limit: "10mb" }) as any);
+app.use(express.urlencoded({ extended: true }));
+
+// CORS
 app.use(cors({
-  origin: ['https://projectpluse.onrender.com', 'https://project-pluse.onrender.com'], // Support both URLs
+  origin: ['https://projectpluse.onrender.com', 'https://project-pluse.onrender.com'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
 
-app.options('*', cors()); // Enable pre-flight for all routes
+app.options('*', cors());
 
+// MULTER STORAGE
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadsPath);
@@ -50,7 +57,13 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+// FILE SIZE LIMIT (RENDER FIX)
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024
+  }
+});
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -287,13 +300,13 @@ app.post('/api/projects/:id/events', verifyToken, upload.single('attachment'), a
     if (type === 'CHECKIN') {
       payload.progressSummary = req.body.progressSummary;
       payload.blockers = req.body.blockers;
-      payload.confidenceLevel = Number(req.body.confidenceLevel);
-      payload.completionPercent = Number(req.body.completionPercent);
+      payload.confidenceLevel = Number(req.body.confidenceLevel) || 0;
+      payload.completionPercent = Number(req.body.completionPercent) || 0;
     }
 
     if (type === 'FEEDBACK') {
-      payload.satisfactionRating = Number(req.body.satisfactionRating);
-      payload.clarityRating = Number(req.body.clarityRating);
+      payload.satisfactionRating = Number(req.body.satisfactionRating) || 0;
+      payload.clarityRating = Number(req.body.clarityRating) || 0;
       payload.flagIssue = Boolean(req.body.flagIssue);
       payload.comments = req.body.comments;
     }
