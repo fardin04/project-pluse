@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer  from 'multer';
 import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import path from 'path';
 import fs from 'fs';  
 import { User } from './models/User.js';
@@ -15,10 +16,20 @@ import { verifyToken } from './middleware/auth.js';
 
 dotenv.config();
 const app = express();
+
+// This safely gets the current directory in ES Modules
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const rootUploadsPath = path.join(__dirname, '..', 'uploads');
-app.use('/uploads', express.static(rootUploadsPath));
+const __dirname = dirname(__filename);
+
+// Define uploads INSIDE the server folder for better permission handling on Render
+const uploadsPath = path.join(__dirname, 'uploads');
+
+// Ensure directory exists
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+}
+
+app.use('/uploads', express.static(uploadsPath));
 app.use(express.json() as any);
 app.use(cors({
   origin: ['https://projectpluse.onrender.com', 'https://project-pluse.onrender.com'], // Support both URLs
@@ -31,11 +42,7 @@ app.options('*', cors()); // Enable pre-flight for all routes
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Check/Create folder at the root level
-    if (!fs.existsSync(rootUploadsPath)) {
-      fs.mkdirSync(rootUploadsPath, { recursive: true });
-    }
-    cb(null, rootUploadsPath);
+    cb(null, uploadsPath);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -231,73 +238,74 @@ app.get('/api/projects/:id/events', verifyToken, async (req: any, res) => {
 });
 
 app.post('/api/projects/:id/events', verifyToken, upload.single('attachment'), async (req: any, res) => {
-  const { type } = req.body;
-  const projectId = req.params.id;
-  const userId = req.user.id;
-  const role = req.user.role;
+  try {
+    const { type } = req.body;
+    const projectId = req.params.id;
+    const userId = req.user.id;
+    const role = req.user.role;
 
-  const project = await Project.findById(projectId);
-  if (!project) return res.status(404).json({ message: 'Project not found' });
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ message: 'Project not found' });
 
-  const isAssignedEmployee = project.employeeIds.map((id: any) => id.toString()).includes(userId);
-  const isClient = project.clientId.toString() === userId;
+    const isAssignedEmployee = project.employeeIds.map((id: any) => id.toString()).includes(userId);
+    const isClient = project.clientId.toString() === userId;
 
-  // Role-based permissions
-  if (type === 'FEEDBACK') {
-    if (!isClient) return res.status(403).json({ message: 'Only the assigned client can submit feedback.' });
-  } else if (type === 'CHECKIN' || type === 'RISK') {
-    if (!isAssignedEmployee) return res.status(403).json({ message: 'Only assigned employees can submit check-ins or risks.' });
-  } else if (type === 'STATUS_CHANGE') {
-    if (role !== 'ADMIN') return res.status(403).json({ message: 'Only admins can post status changes.' });
-  }
+    // Role-based permissions
+    if (type === 'FEEDBACK') {
+      if (!isClient) return res.status(403).json({ message: 'Only the assigned client can submit feedback.' });
+    } else if (type === 'CHECKIN' || type === 'RISK') {
+      if (!isAssignedEmployee) return res.status(403).json({ message: 'Only assigned employees can submit check-ins or risks.' });
+    } else if (type === 'STATUS_CHANGE') {
+      if (role !== 'ADMIN') return res.status(403).json({ message: 'Only admins can post status changes.' });
+    }
 
-  // Enforce one CHECKIN per week per user per project
-  if (type === 'CHECKIN') {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const recentCheckin = await Event.findOne({
+    // Enforce one CHECKIN per week per user per project
+    if (type === 'CHECKIN') {
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const recentCheckin = await Event.findOne({
+        projectId,
+        userId,
+        type: 'CHECKIN',
+        timestamp: { $gte: oneWeekAgo },
+      });
+      if (recentCheckin) {
+        return res.status(409).json({ message: 'Weekly check-in already submitted for this project.' });
+      }
+    }
+
+    // Build enriched event payload
+    const payload: any = {
       projectId,
       userId,
-      type: 'CHECKIN',
-      timestamp: { $gte: oneWeekAgo },
-    });
-    if (recentCheckin) {
-      return res.status(409).json({ message: 'Weekly check-in already submitted for this project.' });
+      type,
+      title: req.body.title,
+      description: req.body.description,
+      attachmentUrl: req.file ? `/uploads/${req.file.filename}` : null,
+    };
+
+    if (type === 'CHECKIN') {
+      payload.progressSummary = req.body.progressSummary;
+      payload.blockers = req.body.blockers;
+      payload.confidenceLevel = Number(req.body.confidenceLevel);
+      payload.completionPercent = Number(req.body.completionPercent);
     }
-  }
 
-  // Build enriched event payload
-  const payload: any = {
-    projectId,
-    userId,
-    type,
-    title: req.body.title,
-    description: req.body.description,
-    attachmentUrl: req.file ? `/uploads/${req.file.filename}` : null,
-  };
+    if (type === 'FEEDBACK') {
+      payload.satisfactionRating = Number(req.body.satisfactionRating);
+      payload.clarityRating = Number(req.body.clarityRating);
+      payload.flagIssue = Boolean(req.body.flagIssue);
+      payload.comments = req.body.comments;
+    }
 
-  if (type === 'CHECKIN') {
-    payload.progressSummary = req.body.progressSummary;
-    payload.blockers = req.body.blockers;
-    payload.confidenceLevel = Number(req.body.confidenceLevel);
-    payload.completionPercent = Number(req.body.completionPercent);
-  }
+    if (type === 'RISK') {
+      payload.severity = req.body.severity;
+      payload.mitigation = req.body.mitigation;
+      payload.riskStatus = req.body.riskStatus || 'OPEN';
+    }
 
-  if (type === 'FEEDBACK') {
-    payload.satisfactionRating = Number(req.body.satisfactionRating);
-    payload.clarityRating = Number(req.body.clarityRating);
-    payload.flagIssue = Boolean(req.body.flagIssue);
-    payload.comments = req.body.comments;
-  }
-
-  if (type === 'RISK') {
-    payload.severity = req.body.severity;
-    payload.mitigation = req.body.mitigation;
-    payload.riskStatus = req.body.riskStatus || 'OPEN';
-  }
-
-  const event = new Event(payload);
-  await event.save();
+    const event = new Event(payload);
+    await event.save();
 
   // Auto-create a risk when client flags an issue in feedback so employees can resolve it
   if (type === 'FEEDBACK' && payload.flagIssue) {
@@ -324,8 +332,12 @@ app.post('/api/projects/:id/events', verifyToken, upload.single('attachment'), a
     await project.save();
   }
 
-  await updateProjectHealth(projectId);
-  res.status(201).json(event);
+    await updateProjectHealth(projectId);
+    res.status(201).json(event);
+  } catch (error) {
+    console.error('Route Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 // Resolve a risk
