@@ -275,10 +275,10 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                     <div><span className="font-bold text-slate-900">Confidence:</span> {checkin.confidenceLevel ?? '-'} /5</div>
                     <div><span className="font-bold text-slate-900">Blockers:</span> {checkin.blockers || 'None'}</div>
                   </div>
-                  {checkin.attachment && (
+                  {checkin.attachmentUrl && (
                     <div className="mt-4 pt-3 border-t border-slate-100">
                       <a 
-                        href={`${(import.meta as any).env?.VITE_API_URL || 'http://localhost:5000'}${checkin.attachment}`} 
+                        href={`${(import.meta as any).env?.VITE_API_URL || 'http://localhost:5000'}${checkin.attachmentUrl}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 text-indigo-600 font-bold text-xs hover:underline"

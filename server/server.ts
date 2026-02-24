@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer  from 'multer';
+import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';  
 import { User } from './models/User.js';
@@ -14,6 +15,8 @@ import { verifyToken } from './middleware/auth.js';
 
 dotenv.config();
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const rootUploadsPath = path.join(__dirname, '..', 'uploads');
 app.use('/uploads', express.static(rootUploadsPath));
 app.use(express.json() as any);
@@ -227,7 +230,7 @@ app.get('/api/projects/:id/events', verifyToken, async (req: any, res) => {
   res.json(events);
 });
 
-app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
+app.post('/api/projects/:id/events', verifyToken, upload.single('attachment'), async (req: any, res) => {
   const { type } = req.body;
   const projectId = req.params.id;
   const userId = req.user.id;
@@ -270,6 +273,7 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
     type,
     title: req.body.title,
     description: req.body.description,
+    attachmentUrl: req.file ? `/uploads/${req.file.filename}` : null,
   };
 
   if (type === 'CHECKIN') {
