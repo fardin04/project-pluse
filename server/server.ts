@@ -21,10 +21,10 @@ const rootUploadsPath = path.join(__dirname, '..', 'uploads');
 app.use('/uploads', express.static(rootUploadsPath));
 app.use(express.json() as any);
 app.use(cors({
-  origin: 'https://projectpluse.onrender.com', // Your FRONTEND URL
+  origin: ['https://projectpluse.onrender.com', 'https://project-pluse.onrender.com'], // Support both URLs
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true // Crucial since you are using Bearer tokens
+  credentials: true
 }));
 
 app.options('*', cors()); // Enable pre-flight for all routes
