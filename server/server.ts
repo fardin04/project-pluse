@@ -43,12 +43,19 @@ app.use('/uploads', express.static(uploadsPath));
 app.use(express.json({ limit: "10mb" }) as any);
 app.use(express.urlencoded({ extended: true }));
 
-// CORS
+// CORS - Allow both domain variants and localhost
 app.use(cors({
-  origin: ['https://projectpluse.onrender.com', 'https://project-pluse.onrender.com'],
+  origin: [
+    'https://projectpluse.onrender.com',
+    'https://project-pluse.onrender.com',
+    'http://localhost:3000',
+    /\.onrender\.com$/
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 
 app.options('*', cors());

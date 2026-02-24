@@ -1,5 +1,10 @@
 
-  const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+  const API_URL = import.meta.env.VITE_API_URL || 'https://project-pluse.onrender.com';
+  
+  // Debug log (remove in production)
+  if (typeof window !== 'undefined') {
+    console.log('🔗 API URL configured:', API_URL);
+  }
 
   // Helper to create fetch with timeout
   const fetchWithTimeout = (url: string, options: any = {}, timeout = 120000) => {

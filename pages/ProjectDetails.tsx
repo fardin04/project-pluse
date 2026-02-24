@@ -278,7 +278,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                   {checkin.attachmentUrl && (
                     <div className="mt-4 pt-3 border-t border-slate-100">
                       <a 
-                        href={`${(import.meta as any).env?.VITE_API_URL || 'https://project-pluse.onrender.com'}${checkin.attachmentUrl}`} 
+                        href={`${import.meta.env.VITE_API_URL}${checkin.attachmentUrl}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 text-indigo-600 font-bold text-xs hover:underline"
