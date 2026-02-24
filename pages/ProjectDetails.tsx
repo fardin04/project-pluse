@@ -83,7 +83,10 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
     formDataPayload.append('confidenceLevel', rawFormData.get('confidence') as string);
     formDataPayload.append('completionPercent', rawFormData.get('completion') as string);
     if (selectedFile) {
+      console.log('📎 Uploading file:', selectedFile.name, selectedFile.size, 'bytes');
       formDataPayload.append('attachment', selectedFile);
+    } else {
+      console.log('📎 No file selected');
     }
     } else if (type === 'FEEDBACK') {
       formDataPayload.append('title', 'Stakeholder Feedback');
@@ -100,7 +103,10 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
     }
 
     try {
-      await api.createEvent(projectId, formDataPayload);
+      console.log('🚀 Submitting event to backend...');
+      const response = await api.createEvent(projectId, formDataPayload);
+      console.log('✅ Event created:', response);
+      
       const [newProj, newEvents] = await Promise.all([
         api.getProject(projectId),
         api.getEvents(projectId)
@@ -112,12 +118,19 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
       setShowFeedbackForm(false);
       setShowRiskForm(false);
       onUpdate();
+      
+      if (selectedFile) {
+        alert('✅ Check-in submitted successfully with attachment!');
+      }
     } catch (err: any) {
+      console.error('❌ Error submitting event:', err);
       const errorMessage = err.message || "Failed to submit update";
       if (errorMessage.includes("Weekly check-in already submitted")) {
         alert("You've already submitted a weekly check-in this week. Please try again next week.");
+      } else if (errorMessage.includes('timeout')) {
+        alert('⏱️ Server timeout. Your backend may be sleeping. Please wait 30 seconds and try again.');
       } else {
-        alert(errorMessage);
+        alert('❌ Error: ' + errorMessage);
       }
     } finally {
       setSubmitting(false);
@@ -284,7 +297,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                         className="inline-flex items-center gap-2 text-indigo-600 font-bold text-xs hover:underline"
                       >
                         <Paperclip size={14} /> 
-                        View Attached Document
+                        📄 {checkin.attachmentUrl.split('/').pop() || 'View Attached Document'}
                       </a>
                     </div>
                   )}
@@ -441,13 +454,17 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
               </div>
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Attachment (PDF, DOC)
+                  Attachment (PDF, DOC) {selectedFile && `- ✓ ${selectedFile.name}`}
                 </label>
                 <div className="flex items-center gap-4 p-3 bg-slate-50 border rounded-xl">
                   <input 
                     type="file" 
                     className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setSelectedFile(file);
+                      if (file) console.log('📎 File selected:', file.name);
+                    }}
                     accept=".pdf,.doc,.docx"
                   />
                   {selectedFile && (
