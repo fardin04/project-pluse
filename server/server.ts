@@ -60,7 +60,7 @@ app.use(express.json({ limit: "10mb" }) as any);
 app.use(express.urlencoded({ extended: true }));
 
 // CORS - Allow both domain variants and localhost
-app.use(cors({
+const corsOptions = {
   origin: [
     'https://projectpluse.onrender.com',
     'https://project-pluse.onrender.com',
@@ -72,9 +72,10 @@ app.use(cors({
   credentials: true,
   preflightContinue: false,
   optionsSuccessStatus: 204
-}));
+};
 
-app.options('*', cors());
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Health check endpoint (helps keep server awake)
 app.get('/api/health', (req, res) => {
