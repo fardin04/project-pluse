@@ -71,43 +71,59 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
     setSubmitting(true);
 
     const formDataPayload = new FormData();
-    formDataPayload.append('type', type);
-
-    const rawFormData = new FormData(e.currentTarget as HTMLFormElement);
-
-    if (type === 'CHECKIN') {
-      const summary = rawFormData.get('summary') as string;
-      const docLink = rawFormData.get('docLink') as string; // The URL from your new input
-
-      formDataPayload.append('title', 'Weekly Progress Update');
-      formDataPayload.append('description', summary);
-      formDataPayload.append('progressSummary', summary);
-      formDataPayload.append('blockers', rawFormData.get('blockers') as string);
-      formDataPayload.append('confidenceLevel', rawFormData.get('confidence') as string);
-      formDataPayload.append('completionPercent', rawFormData.get('completion') as string);
-
-      // We send the link to 'attachmentUrl' instead of a file to 'attachment'
-      if (docLink) {
-        formDataPayload.append('attachmentUrl', docLink);
-      }
-    } else if (type === 'FEEDBACK') {
-      formDataPayload.append('title', 'Stakeholder Feedback');
-      formDataPayload.append('description', `Satisfaction: ${rawFormData.get('satisfaction')}/5. Comments: ${rawFormData.get('comments')}`);
-      formDataPayload.append('satisfactionRating', rawFormData.get('satisfaction') as string);
-      formDataPayload.append('clarityRating', rawFormData.get('clarity') as string);
-      formDataPayload.append('flagIssue', rawFormData.get('flagIssue') === 'on' ? 'true' : 'false');
-      formDataPayload.append('comments', rawFormData.get('comments') as string);
-    } else if (type === 'RISK') {
-      formDataPayload.append('title', rawFormData.get('title') as string);
-      formDataPayload.append('description', `Severity: ${rawFormData.get('severity')}. Mitigation: ${rawFormData.get('mitigation')}`);
-      formDataPayload.append('severity', rawFormData.get('severity') as string);
-      formDataPayload.append('mitigation', rawFormData.get('mitigation') as string);
-    }
+    const form = e.currentTarget as HTMLFormElement;
 
     try {
+      if (type === 'CHECKIN') {
+        // Manually grab values using DOM queries (more robust)
+        const summary = (form.querySelector('[name="summary"]') as HTMLTextAreaElement).value;
+        const blockers = (form.querySelector('[name="blockers"]') as HTMLTextAreaElement)?.value || "";
+        const confidence = (form.querySelector('[name="confidence"]') as HTMLSelectElement).value;
+        const completion = (form.querySelector('[name="completion"]') as HTMLInputElement).value;
+        const docLink = (form.querySelector('[name="docLink"]') as HTMLInputElement).value || "";
+
+        // Append values one by one
+        formDataPayload.append('type', type);
+        formDataPayload.append('title', 'Weekly Progress Update');
+        formDataPayload.append('description', summary);
+        formDataPayload.append('progressSummary', summary);
+        formDataPayload.append('blockers', blockers);
+        formDataPayload.append('confidenceLevel', confidence);
+        formDataPayload.append('completionPercent', completion);
+
+        // Send Google Drive link separately
+        if (docLink) {
+          formDataPayload.append('attachmentUrl', docLink);
+        }
+      } else if (type === 'FEEDBACK') {
+        const satisfaction = (form.querySelector('[name="satisfaction"]') as HTMLSelectElement).value;
+        const clarity = (form.querySelector('[name="clarity"]') as HTMLSelectElement).value;
+        const comments = (form.querySelector('[name="comments"]') as HTMLTextAreaElement).value;
+        const flagIssue = (form.querySelector('[name="flagIssue"]') as HTMLInputElement)?.checked;
+
+        formDataPayload.append('type', type);
+        formDataPayload.append('title', 'Stakeholder Feedback');
+        formDataPayload.append('description', `Satisfaction: ${satisfaction}/5. Comments: ${comments}`);
+        formDataPayload.append('satisfactionRating', satisfaction);
+        formDataPayload.append('clarityRating', clarity);
+        formDataPayload.append('flagIssue', flagIssue ? 'true' : 'false');
+        formDataPayload.append('comments', comments);
+      } else if (type === 'RISK') {
+        const title = (form.querySelector('[name="title"]') as HTMLInputElement).value;
+        const severity = (form.querySelector('[name="severity"]') as HTMLSelectElement).value;
+        const mitigation = (form.querySelector('[name="mitigation"]') as HTMLTextAreaElement).value;
+
+        formDataPayload.append('type', type);
+        formDataPayload.append('title', title);
+        formDataPayload.append('description', `Severity: ${severity}. Mitigation: ${mitigation}`);
+        formDataPayload.append('severity', severity);
+        formDataPayload.append('mitigation', mitigation);
+      }
+
+      console.log("🚀 Sending to backend...");
       await api.createEvent(projectId, formDataPayload);
 
-      // Refresh UI
+      // Refresh data
       const [newProj, newEvents] = await Promise.all([
         api.getProject(projectId),
         api.getEvents(projectId)
@@ -115,12 +131,14 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
       setProject(newProj);
       setEvents(newEvents);
 
+      // Cleanup
       setShowCheckinForm(false);
       setShowFeedbackForm(false);
       setShowRiskForm(false);
       onUpdate();
-      alert('✅ Submitted successfully via Cloud Link!');
+      alert('✅ Submitted successfully!');
     } catch (err: any) {
+      console.error('Error:', err);
       alert('Submission failed: ' + err.message);
     } finally {
       setSubmitting(false);
