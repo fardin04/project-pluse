@@ -64,7 +64,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
   const riskResolutions = events.filter(e => e.type === 'STATUS_CHANGE' && e.title?.includes('Risk Resolved'));
 
   const isEmployee = project.employeeIds?.some((e: any) => (e._id || e) === user.id);
-  const isClient = (project.clientId?._id || project.clientId) === user.id;
+  const isClient = (project.clientId?._id || project.clientId) === user.id; 
 
   const handleAction = async (e: React.FormEvent, type: string) => {
     e.preventDefault();
@@ -462,7 +462,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                 </div>
               </div>
               <div className="flex gap-4">
-                <button type="button" onClick={() => setShowCheckinForm(false)} className="flex-1 py-4 font-bold text-slate-500">Cancel</button>
+                <button type="button" onClick={() => { setShowCheckinForm(false); setSelectedFile(null); }} className="flex-1 py-4 font-bold text-slate-500">Cancel</button>
                 <button type="submit" disabled={submitting} className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold rounded-2xl transition-all">
                   {submitting ? 'Submitting...' : 'Submit Update'}
                 </button>
