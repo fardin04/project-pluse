@@ -28,8 +28,12 @@ app.use((req, res, next) => {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Define uploads INSIDE the server folder for better permission handling on Render
-const uploadsPath = path.join(__dirname, 'uploads');
+// Define uploads path. Render is read-only except /tmp, so use /tmp in production.
+const uploadsPath = process.env.UPLOADS_DIR
+  ? process.env.UPLOADS_DIR
+  : (process.env.RENDER || process.env.NODE_ENV === 'production')
+    ? '/tmp/uploads'
+    : path.join(__dirname, 'uploads');
 
 // Ensure directory exists
 if (!fs.existsSync(uploadsPath)) {
@@ -38,6 +42,18 @@ if (!fs.existsSync(uploadsPath)) {
 
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsPath));
+
+// Log incoming requests to debug slow uploads
+app.use((req, res, next) => {
+  if (req.method === 'POST' && req.path.includes('/api/projects/') && req.path.endsWith('/events')) {
+    console.log('➡️ Incoming event upload request:', {
+      path: req.path,
+      contentType: req.headers['content-type'],
+      contentLength: req.headers['content-length']
+    });
+  }
+  next();
+});
 
 // 🔥 VERY IMPORTANT FOR FORMDATA
 app.use(express.json({ limit: "10mb" }) as any);
@@ -86,6 +102,18 @@ const upload = multer({
   limits: {
     fileSize: 5 * 1024 * 1024
   }
+});
+
+// Multer error handler to avoid timeouts on upload failures
+app.use((err: any, req: any, res: any, next: any) => {
+  if (err && err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ message: 'File too large. Max 5MB.' });
+  }
+  if (err) {
+    console.error('Upload error:', err);
+    return res.status(400).json({ message: 'Upload failed', error: err.message || err });
+  }
+  next();
 });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
@@ -355,33 +383,46 @@ app.post('/api/projects/:id/events', verifyToken, upload.single('attachment'), a
       hasAttachment: !!event.attachmentUrl 
     });
 
-  // Auto-create a risk when client flags an issue in feedback so employees can resolve it
-  if (type === 'FEEDBACK' && payload.flagIssue) {
-    const riskPayload: any = {
-      projectId,
-      userId,
-      type: 'RISK',
-      title: payload.title || 'Flagged Issue',
-      description: payload.description || 'Client flagged an issue requiring attention.',
-      severity: 'MEDIUM',
-      mitigation: 'Pending owner review',
-      riskStatus: 'OPEN',
-    };
-    try {
-      await new Event(riskPayload).save();
-    } catch (e) {
-      console.error('Failed to create flagged risk from feedback:', e);
-    }
-  }
-
-  // Keep project progress in sync with the latest check-in completion
-  if (type === 'CHECKIN' && !Number.isNaN(payload.completionPercent)) {
-    project.progress = payload.completionPercent;
-    await project.save();
-  }
-
-    await updateProjectHealth(projectId);
+    // Respond immediately to avoid client timeouts
     res.status(201).json(event);
+
+    // Background tasks (do not block response)
+    setImmediate(async () => {
+      // Auto-create a risk when client flags an issue in feedback so employees can resolve it
+      if (type === 'FEEDBACK' && payload.flagIssue) {
+        const riskPayload: any = {
+          projectId,
+          userId,
+          type: 'RISK',
+          title: payload.title || 'Flagged Issue',
+          description: payload.description || 'Client flagged an issue requiring attention.',
+          severity: 'MEDIUM',
+          mitigation: 'Pending owner review',
+          riskStatus: 'OPEN',
+        };
+        try {
+          await new Event(riskPayload).save();
+        } catch (e) {
+          console.error('Failed to create flagged risk from feedback:', e);
+        }
+      }
+
+      // Keep project progress in sync with the latest check-in completion
+      if (type === 'CHECKIN' && !Number.isNaN(payload.completionPercent)) {
+        try {
+          project.progress = payload.completionPercent;
+          await project.save();
+        } catch (e) {
+          console.error('Failed to update project progress:', e);
+        }
+      }
+
+      try {
+        await updateProjectHealth(projectId);
+      } catch (e) {
+        console.error('Failed to update project health:', e);
+      }
+    });
   } catch (error) {
     console.error('Route Error [POST /api/projects/:id/events]:', error);
     res.status(500).json({ 
