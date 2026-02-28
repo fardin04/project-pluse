@@ -17,6 +17,7 @@ const eventSchema = new mongoose.Schema({
   confidenceLevel: { type: Number, min: 1, max: 5 },
   completionPercent: { type: Number, min: 0, max: 100 },
   attachmentLink: { type: String },
+  attachmentUrl: { type: String },
   // Client feedback fields
   satisfactionRating: { type: Number, min: 1, max: 5 },
   clarityRating: { type: Number, min: 1, max: 5 },

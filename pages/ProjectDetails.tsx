@@ -73,13 +73,16 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
     const payload: any = { type };
 
     if (type === 'CHECKIN') {
+      const rawAttachment = (formData.get('attachmentLink') as string) || '';
+      const normalizedAttachment = rawAttachment.trim();
       payload.title = 'Weekly Progress Update';
       payload.description = (formData.get('summary') as string) || '';
       payload.progressSummary = formData.get('summary');
       payload.blockers = formData.get('blockers');
       payload.confidenceLevel = Number(formData.get('confidence'));
       payload.completionPercent = Number(formData.get('completion'));
-      payload.attachmentLink = formData.get('attachmentLink') || null;
+      payload.attachmentLink = normalizedAttachment || null;
+      payload.attachmentUrl = normalizedAttachment || null;
     } else if (type === 'FEEDBACK') {
       payload.title = 'Stakeholder Feedback';
       payload.description = `Satisfaction: ${formData.get('satisfaction')}/5. Comments: ${formData.get('comments')}`;
@@ -251,7 +254,9 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
               {projectCheckins.length === 0 && (
                 <p className="text-slate-400 italic">No weekly updates yet.</p>
               )}
-              {projectCheckins.map((checkin) => (
+              {projectCheckins.map((checkin) => {
+                const attachmentHref = checkin.attachmentLink || checkin.attachmentUrl || checkin.attachment;
+                return (
                 <div key={checkin._id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
@@ -272,17 +277,17 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                   {checkin.progressSummary && (
                     <p className="text-sm text-slate-600"><span className="font-bold text-slate-900">Summary:</span> {checkin.progressSummary}</p>
                   )}
-                  {checkin.attachmentLink && (
+                  {attachmentHref && (
                     <div className="flex items-center gap-2 text-sm">
                       <span className="font-bold text-slate-900">Attachment:</span>
-                      <a href={checkin.attachmentLink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 underline flex items-center gap-1">
+                      <a href={attachmentHref} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 underline flex items-center gap-1">
                         <ClipboardList size={14} />
                         View Document
                       </a>
                     </div>
                   )}
                 </div>
-              ))}
+              )})}
             </div>
           )}
 

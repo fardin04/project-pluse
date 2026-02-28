@@ -245,11 +245,21 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
   };
 
   if (type === 'CHECKIN') {
+    const incomingAttachment =
+      typeof req.body.attachmentLink === 'string'
+        ? req.body.attachmentLink
+        : typeof req.body.attachmentUrl === 'string'
+          ? req.body.attachmentUrl
+          : typeof req.body.attachment === 'string'
+            ? req.body.attachment
+            : '';
+    const normalizedAttachment = incomingAttachment.trim();
     payload.progressSummary = req.body.progressSummary;
     payload.blockers = req.body.blockers;
     payload.confidenceLevel = Number(req.body.confidenceLevel);
     payload.completionPercent = Number(req.body.completionPercent);
-    payload.attachmentLink = req.body.attachmentLink;
+    payload.attachmentLink = normalizedAttachment || undefined;
+    payload.attachmentUrl = normalizedAttachment || undefined;
   }
 
   if (type === 'FEEDBACK') {
