@@ -291,7 +291,20 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
   }
 
   const event = new Event(payload);
+  console.log('[BACKEND] Event being saved to DB:', {
+    type: event.type,
+    attachmentLink: event.attachmentLink,
+    attachmentUrl: event.attachmentUrl,
+    fullDocument: event.toObject?.() || event
+  });
+  
   await event.save();
+  
+  console.log('[BACKEND] Event saved successfully:', {
+    id: event._id,
+    attachmentLink: event.attachmentLink,
+    attachmentUrl: event.attachmentUrl
+  });
 
   // Auto-create a risk when client flags an issue in feedback so employees can resolve it
   if (type === 'FEEDBACK' && payload.flagIssue) {
