@@ -7,7 +7,7 @@ import {
 import { api } from '../services/apiService';
 import { 
   ArrowLeft, Calendar, AlertCircle, 
-  MessageSquare, TrendingUp, History, Flag, Plus, Check, ClipboardList, Loader2, Paperclip 
+  MessageSquare, TrendingUp, History, Flag, Plus, Check, ClipboardList, Loader2 
 } from 'lucide-react';
 
 interface ProjectDetailsProps {
@@ -22,13 +22,12 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'checkins' | 'resources' | 'feedback' | 'risks' | 'logs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'checkins' | 'feedback' | 'risks' | 'logs'>('overview');
   const [showCheckinForm, setShowCheckinForm] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [showRiskForm, setShowRiskForm] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [selectedRisk, setSelectedRisk] = useState<any>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     const loadProjectData = async () => {
@@ -68,67 +67,53 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
 
   const handleAction = async (e: React.FormEvent, type: string) => {
     e.preventDefault();
-    if (submitting) return;
-    
-    console.log("🚀 Submit started for type:", type);
-    setSubmitting(true);
+      if (submitting) return;
+      setSubmitting(true);
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const payload: any = { type };
+
+    if (type === 'CHECKIN') {
+      payload.title = 'Weekly Progress Update';
+      payload.description = (formData.get('summary') as string) || '';
+      payload.progressSummary = formData.get('summary');
+      payload.blockers = formData.get('blockers');
+      payload.confidenceLevel = Number(formData.get('confidence'));
+      payload.completionPercent = Number(formData.get('completion'));
+    } else if (type === 'FEEDBACK') {
+      payload.title = 'Stakeholder Feedback';
+      payload.description = `Satisfaction: ${formData.get('satisfaction')}/5. Comments: ${formData.get('comments')}`;
+      payload.satisfactionRating = Number(formData.get('satisfaction'));
+      payload.clarityRating = Number(formData.get('clarity'));
+      payload.flagIssue = formData.get('flagIssue') === 'on';
+      payload.comments = formData.get('comments');
+    } else if (type === 'RISK') {
+      payload.title = formData.get('title') as string;
+      payload.description = `Severity: ${formData.get('severity')}. Mitigation: ${formData.get('mitigation')}`;
+      payload.severity = formData.get('severity');
+      payload.mitigation = formData.get('mitigation');
+    }
 
     try {
-      const form = e.currentTarget as HTMLFormElement;
-      const data = new FormData(form);
-
-      // DEBUG: Let's see if the code actually reaches this point
-      console.log("📦 Form Data captured. Summary:", data.get('summary'));
-
-      // Manual payload construction to ensure NO fields are null/undefined
-      const formDataPayload = new FormData();
-      formDataPayload.append('type', type);
-      formDataPayload.append('title', 'Weekly Update');
-      
-      // We use the 'summary' field for both description and progressSummary
-      const summaryText = (data.get('summary') as string) || "No summary provided";
-      formDataPayload.append('description', summaryText);
-      formDataPayload.append('progressSummary', summaryText);
-      
-      // Add your extra field safely
-      const extraField = (data.get('progressSummary') as string) || "";
-      if (extraField) {
-        formDataPayload.append('details', extraField); 
-      }
-
-      formDataPayload.append('confidenceLevel', (data.get('confidence') as string) || "5");
-      formDataPayload.append('completionPercent', (data.get('completion') as string) || "0");
-      formDataPayload.append('blockers', (data.get('blockers') as string) || "None");
-
-      if (selectedFile) {
-        formDataPayload.append('attachment', selectedFile);
-      }
-
-      console.log("📡 Sending to API now...");
-      const response = await api.createEvent(projectId, formDataPayload);
-      console.log("✅ Success!", response);
-
-      // Refresh everything
+      await api.createEvent(projectId, payload);
       const [newProj, newEvents] = await Promise.all([
         api.getProject(projectId),
         api.getEvents(projectId)
       ]);
-      
       setProject(newProj);
       setEvents(newEvents);
       setShowCheckinForm(false);
       setShowFeedbackForm(false);
       setShowRiskForm(false);
-      setSelectedFile(null);
       onUpdate();
-      alert("Submitted successfully!");
-
     } catch (err: any) {
-      console.error("❌ CRASHED:", err);
-      alert("Error: " + err.message);
+      const errorMessage = err.message || "Failed to submit update";
+      if (errorMessage.includes("Weekly check-in already submitted")) {
+        alert("You've already submitted a weekly check-in this week. Please try again next week.");
+      } else {
+        alert(errorMessage);
+      }
     } finally {
       setSubmitting(false);
-      console.log("🏁 Submitting state reset.");
     }
   };
 
@@ -208,7 +193,6 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
         {[
           { id: 'overview', icon: TrendingUp, label: 'Performance' },
           { id: 'checkins', icon: History, label: 'Weekly Updates' },
-          { id: 'resources', icon: Paperclip, label: 'Shared Drive' },
           { id: 'feedback', icon: MessageSquare, label: 'Client Voices' },
           { id: 'risks', icon: AlertCircle, label: `Risks (${openRisks.length})` },
           { id: 'logs', icon: ClipboardList, label: 'Activity Logs' },
@@ -272,7 +256,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                     <div>
                       <p className="text-xs font-bold uppercase text-slate-400">Weekly Update</p>
                       <h4 className="text-lg font-bold text-slate-900">{checkin.title}</h4>
-                      <p className="text-sm text-slate-600 mt-2">{checkin.description || checkin.progressSummary}</p>
+                      <p className="text-sm text-slate-600 mt-2">{checkin.description}</p>
                     </div>
                     <div className="text-right text-[10px] font-bold text-slate-400 uppercase">
                       {new Date(checkin.timestamp).toLocaleDateString()}<br/>
@@ -287,41 +271,8 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                   {checkin.progressSummary && (
                     <p className="text-sm text-slate-600"><span className="font-bold text-slate-900">Summary:</span> {checkin.progressSummary}</p>
                   )}
-                  {checkin.attachmentUrl && (
-                    <div className="mt-4 pt-3 border-t border-slate-100">
-                      <a 
-                        href={checkin.attachmentUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-blue-600 font-bold text-xs hover:underline"
-                      >
-                        <Paperclip size={14} /> 
-                        📂 View Shared Document (Google Drive)
-                      </a>
-                    </div>
-                  )}
                 </div>
               ))}
-            </div>
-          )}
-
-          {activeTab === 'resources' && (
-            <div className="bg-white p-10 rounded-3xl border-2 border-dashed border-slate-200 text-center space-y-4">
-              <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
-                <Paperclip className="text-blue-600" size={32} />
-              </div>
-              <h3 className="text-2xl font-bold text-slate-900">Project Cloud Storage</h3>
-              <p className="text-slate-500 max-w-sm mx-auto">
-                To avoid upload errors, please upload all PDFs, Schedules, and large documents to our shared Google Drive folder.
-              </p>
-              <a 
-                href={project.driveLink || 'https://drive.google.com'} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg transition-transform hover:scale-105"
-              >
-                Open Google Drive Folder
-              </a>
             </div>
           )}
 
@@ -467,17 +418,6 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                   <option value="1">Confidence: 1</option>
                 </select>
                 <input name="completion" type="number" min="0" max="100" className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Estimated completion %" required />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Progress Details
-                </label>
-                <input 
-                  name="progressSummary" 
-                  type="text" 
-                  className="w-full p-3 bg-slate-50 border rounded-xl" 
-                  placeholder="What did you achieve?" 
-                />
               </div>
               <div className="flex gap-4">
                 <button type="button" onClick={() => setShowCheckinForm(false)} className="flex-1 py-4 font-bold text-slate-500">Cancel</button>

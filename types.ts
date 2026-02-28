@@ -43,7 +43,6 @@ export interface Project {
   progress: number; // 0-100
   status: ProjectStatus;
   healthScore: number; // 0-100
-  driveLink?: string;
 }
 
 export interface WeeklyCheckIn {
@@ -55,7 +54,6 @@ export interface WeeklyCheckIn {
   confidence: number; // 1-5
   progressEstimate: number; // 0-100
   timestamp: string;
-  attachmentUrl?: string;
 }
 
 export interface ClientFeedback {
@@ -88,6 +86,4 @@ export interface TimelineEvent {
   title: string;
   description: string;
   timestamp: string;
-  attachmentUrl?: string;
 }
-

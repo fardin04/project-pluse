@@ -10,7 +10,6 @@ const projectSchema = new mongoose.Schema({
   endDate: { type: Date, required: true },
   progress: { type: Number, default: 0 },
   healthScore: { type: Number, default: 100 },
-  driveLink: { type: String, default: '' },
   status: { 
     type: String, 
     enum: ['ON_TRACK', 'AT_RISK', 'CRITICAL', 'COMPLETED'], 
