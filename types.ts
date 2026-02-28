@@ -55,7 +55,7 @@ export interface WeeklyCheckIn {
   confidence: number; // 1-5
   progressEstimate: number; // 0-100
   timestamp: string;
-  attachment?: string;
+  attachmentUrl?: string;
 }
 
 export interface ClientFeedback {
@@ -88,6 +88,6 @@ export interface TimelineEvent {
   title: string;
   description: string;
   timestamp: string;
-  attachment?: string;
+  attachmentUrl?: string;
 }
 
