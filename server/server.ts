@@ -200,6 +200,8 @@ app.get('/api/projects/:id/events', verifyToken, async (req: any, res) => {
 });
 
 app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
+  console.log('[EVENT_CREATE] Entire req.body:', JSON.stringify(req.body, null, 2));
+  
   const { type } = req.body;
   const projectId = req.params.id;
   const userId = req.user.id;
@@ -335,7 +337,17 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
   }
 
   await updateProjectHealth(projectId);
-  res.status(201).json(event);
+  
+  const savedEvent = event.toObject?.() || event;
+  console.log('[RESPONSE] Sending event back to client:', {
+    _id: savedEvent._id,
+    type: savedEvent.type,
+    attachmentLink: savedEvent.attachmentLink,
+    attachmentUrl: savedEvent.attachmentUrl,
+    fullEvent: savedEvent
+  });
+  
+  res.status(201).json(savedEvent);
 });
 
 // Resolve a risk
