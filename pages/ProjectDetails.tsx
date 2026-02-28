@@ -255,7 +255,18 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                 <p className="text-slate-400 italic">No weekly updates yet.</p>
               )}
               {projectCheckins.map((checkin) => {
-                const attachmentHref = checkin.attachmentLink || checkin.attachmentUrl || checkin.attachment;
+                const attachmentHref = (
+                  checkin.attachmentLink ||
+                  checkin.attachmentUrl ||
+                  checkin.attachment ||
+                  checkin.fileUrl ||
+                  checkin.fileLink ||
+                  checkin.meta?.attachmentLink ||
+                  checkin.meta?.attachmentUrl ||
+                  checkin.data?.attachmentLink ||
+                  checkin.data?.attachmentUrl ||
+                  ''
+                ).toString().trim();
                 return (
                 <div key={checkin._id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
                   <div className="flex justify-between items-start">
@@ -277,15 +288,17 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                   {checkin.progressSummary && (
                     <p className="text-sm text-slate-600"><span className="font-bold text-slate-900">Summary:</span> {checkin.progressSummary}</p>
                   )}
-                  {attachmentHref && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="font-bold text-slate-900">Attachment:</span>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-bold text-slate-900">Attachment:</span>
+                    {attachmentHref ? (
                       <a href={attachmentHref} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 underline flex items-center gap-1">
                         <ClipboardList size={14} />
                         View Document
                       </a>
-                    </div>
-                  )}
+                    ) : (
+                      <span className="text-slate-500">Not provided</span>
+                    )}
+                  </div>
                 </div>
               )})}
             </div>
