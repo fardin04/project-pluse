@@ -200,7 +200,10 @@ app.get('/api/projects/:id/events', verifyToken, async (req: any, res) => {
 });
 
 app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
-  console.log('[EVENT_CREATE] Entire req.body:', JSON.stringify(req.body, null, 2));
+  const timestamp = new Date().toISOString();
+  console.error(`\n\n==== [${timestamp}] EVENT_CREATE STARTED ====`);
+  console.error('[EVENT_CREATE] Entire req.body:', JSON.stringify(req.body, null, 2));
+  console.error(`[EVENT_CREATE] Type field: ${req.body.type}`);
   
   const { type } = req.body;
   const projectId = req.params.id;
@@ -260,7 +263,7 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
             : '';
     const normalizedAttachment = incomingAttachment.trim();
     
-    console.log('[CHECKIN] Received attachment:', {
+    console.error(`\n[CHECKIN] Processing check-in - Received attachment:`, {
       raw: req.body.attachmentLink || req.body.attachmentUrl || req.body.attachment,
       normalized: normalizedAttachment,
       isEmpty: !normalizedAttachment
@@ -274,6 +277,9 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
     if (normalizedAttachment) {
       payload.attachmentLink = normalizedAttachment;
       payload.attachmentUrl = normalizedAttachment;
+      console.error(`[CHECKIN] ✓ Attachment set: ${normalizedAttachment}`);
+    } else {
+      console.error(`[CHECKIN] ✗ NO attachment found in request`);
     }
     
     console.log('[CHECKIN] Payload being saved:', {
@@ -339,13 +345,12 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
   await updateProjectHealth(projectId);
   
   const savedEvent = event.toObject?.() || event;
-  console.log('[RESPONSE] Sending event back to client:', {
-    _id: savedEvent._id,
-    type: savedEvent.type,
-    attachmentLink: savedEvent.attachmentLink,
-    attachmentUrl: savedEvent.attachmentUrl,
-    fullEvent: savedEvent
-  });
+  console.error(`\n==== [RESPONSE] Sending event back ====`);
+  console.error('[RESPONSE] Event ID:', savedEvent._id);
+  console.error('[RESPONSE] Event Type:', savedEvent.type);
+  console.error('[RESPONSE] attachmentLink:', savedEvent.attachmentLink);
+  console.error('[RESPONSE] attachmentUrl:', savedEvent.attachmentUrl);
+  console.error(`==== END RESPONSE ====\n`);
   
   res.status(201).json(savedEvent);
 });
