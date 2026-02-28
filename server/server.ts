@@ -254,12 +254,27 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
             ? req.body.attachment
             : '';
     const normalizedAttachment = incomingAttachment.trim();
+    
+    console.log('[CHECKIN] Received attachment:', {
+      raw: req.body.attachmentLink || req.body.attachmentUrl || req.body.attachment,
+      normalized: normalizedAttachment,
+      isEmpty: !normalizedAttachment
+    });
+    
     payload.progressSummary = req.body.progressSummary;
     payload.blockers = req.body.blockers;
     payload.confidenceLevel = Number(req.body.confidenceLevel);
     payload.completionPercent = Number(req.body.completionPercent);
-    payload.attachmentLink = normalizedAttachment || undefined;
-    payload.attachmentUrl = normalizedAttachment || undefined;
+    
+    if (normalizedAttachment) {
+      payload.attachmentLink = normalizedAttachment;
+      payload.attachmentUrl = normalizedAttachment;
+    }
+    
+    console.log('[CHECKIN] Payload being saved:', {
+      attachmentLink: payload.attachmentLink,
+      attachmentUrl: payload.attachmentUrl
+    });
   }
 
   if (type === 'FEEDBACK') {
