@@ -79,6 +79,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
       payload.blockers = formData.get('blockers');
       payload.confidenceLevel = Number(formData.get('confidence'));
       payload.completionPercent = Number(formData.get('completion'));
+      payload.attachmentLink = formData.get('attachmentLink') || null;
     } else if (type === 'FEEDBACK') {
       payload.title = 'Stakeholder Feedback';
       payload.description = `Satisfaction: ${formData.get('satisfaction')}/5. Comments: ${formData.get('comments')}`;
@@ -271,6 +272,15 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
                   {checkin.progressSummary && (
                     <p className="text-sm text-slate-600"><span className="font-bold text-slate-900">Summary:</span> {checkin.progressSummary}</p>
                   )}
+                  {checkin.attachmentLink && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-bold text-slate-900">Attachment:</span>
+                      <a href={checkin.attachmentLink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 underline flex items-center gap-1">
+                        <ClipboardList size={14} />
+                        View Document
+                      </a>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -409,6 +419,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
             <form onSubmit={(e) => handleAction(e, 'CHECKIN')} className="space-y-6">
               <textarea name="summary" className="w-full p-4 bg-slate-50 border rounded-2xl h-24" placeholder="Progress summary..." required />
               <textarea name="blockers" className="w-full p-4 bg-slate-50 border rounded-2xl h-20" placeholder="Blockers or challenges..." />
+              <input name="attachmentLink" type="url" className="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Attachment link (PDF/DOC) - Optional" />
               <div className="grid grid-cols-2 gap-4">
                 <select name="confidence" className="w-full p-3 bg-slate-50 border rounded-xl" required>
                   <option value="5">Confidence: 5</option>

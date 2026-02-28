@@ -53,6 +53,7 @@ export interface WeeklyCheckIn {
   blockers: string;
   confidence: number; // 1-5
   progressEstimate: number; // 0-100
+  attachmentLink?: string; // Optional link to PDF/DOC file
   timestamp: string;
 }
 
