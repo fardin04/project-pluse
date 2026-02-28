@@ -244,6 +244,9 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
     description: req.body.description,
   };
 
+  console.log('[BACKEND] Raw req.body received:', req.body);
+  console.log('[BACKEND] Type:', type);
+
   if (type === 'CHECKIN') {
     const incomingAttachment =
       typeof req.body.attachmentLink === 'string'
