@@ -249,6 +249,7 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
     payload.blockers = req.body.blockers;
     payload.confidenceLevel = Number(req.body.confidenceLevel);
     payload.completionPercent = Number(req.body.completionPercent);
+    payload.attachmentLink = req.body.attachmentLink;
   }
 
   if (type === 'FEEDBACK') {
