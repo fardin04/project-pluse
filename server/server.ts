@@ -200,11 +200,6 @@ app.get('/api/projects/:id/events', verifyToken, async (req: any, res) => {
 });
 
 app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
-  const timestamp = new Date().toISOString();
-  console.error(`\n\n==== [${timestamp}] EVENT_CREATE STARTED ====`);
-  console.error('[EVENT_CREATE] Entire req.body:', JSON.stringify(req.body, null, 2));
-  console.error(`[EVENT_CREATE] Type field: ${req.body.type}`);
-  
   const { type } = req.body;
   const projectId = req.params.id;
   const userId = req.user.id;
@@ -249,9 +244,6 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
     description: req.body.description,
   };
 
-  console.log('[BACKEND] Raw req.body received:', req.body);
-  console.log('[BACKEND] Type:', type);
-
   if (type === 'CHECKIN') {
     const incomingAttachment =
       typeof req.body.attachmentLink === 'string'
@@ -263,12 +255,6 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
             : '';
     const normalizedAttachment = incomingAttachment.trim();
     
-    console.error(`\n[CHECKIN] Processing check-in - Received attachment:`, {
-      raw: req.body.attachmentLink || req.body.attachmentUrl || req.body.attachment,
-      normalized: normalizedAttachment,
-      isEmpty: !normalizedAttachment
-    });
-    
     payload.progressSummary = req.body.progressSummary;
     payload.blockers = req.body.blockers;
     payload.confidenceLevel = Number(req.body.confidenceLevel);
@@ -277,9 +263,6 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
     if (normalizedAttachment) {
       payload.attachmentLink = normalizedAttachment;
       payload.attachmentUrl = normalizedAttachment;
-      console.error(`[CHECKIN] ✓ Attachment set: ${normalizedAttachment}`);
-    } else {
-      console.error(`[CHECKIN] ✗ NO attachment found in request`);
     }
     
     console.log('[CHECKIN] Payload being saved:', {
@@ -302,20 +285,7 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
   }
 
   const event = new Event(payload);
-  console.log('[BACKEND] Event being saved to DB:', {
-    type: event.type,
-    attachmentLink: event.attachmentLink,
-    attachmentUrl: event.attachmentUrl,
-    fullDocument: event.toObject?.() || event
-  });
-  
   await event.save();
-  
-  console.log('[BACKEND] Event saved successfully:', {
-    id: event._id,
-    attachmentLink: event.attachmentLink,
-    attachmentUrl: event.attachmentUrl
-  });
 
   // Auto-create a risk when client flags an issue in feedback so employees can resolve it
   if (type === 'FEEDBACK' && payload.flagIssue) {
@@ -343,16 +313,7 @@ app.post('/api/projects/:id/events', verifyToken, async (req: any, res) => {
   }
 
   await updateProjectHealth(projectId);
-  
-  const savedEvent = event.toObject?.() || event;
-  console.error(`\n==== [RESPONSE] Sending event back ====`);
-  console.error('[RESPONSE] Event ID:', savedEvent._id);
-  console.error('[RESPONSE] Event Type:', savedEvent.type);
-  console.error('[RESPONSE] attachmentLink:', savedEvent.attachmentLink);
-  console.error('[RESPONSE] attachmentUrl:', savedEvent.attachmentUrl);
-  console.error(`==== END RESPONSE ====\n`);
-  
-  res.status(201).json(savedEvent);
+  res.status(201).json(event);
 });
 
 // Resolve a risk

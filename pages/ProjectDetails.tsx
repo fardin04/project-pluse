@@ -83,14 +83,6 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ projectId, user, onBack
       payload.completionPercent = Number(formData.get('completion'));
       payload.attachmentLink = normalizedAttachment || null;
       payload.attachmentUrl = normalizedAttachment || null;
-      
-      console.log('[FRONTEND] Check-in payload before submit:', {
-        rawAttachment,
-        normalizedAttachment,
-        attachmentLink: payload.attachmentLink,
-        attachmentUrl: payload.attachmentUrl,
-        fullPayload: payload
-      });
     } else if (type === 'FEEDBACK') {
       payload.title = 'Stakeholder Feedback';
       payload.description = `Satisfaction: ${formData.get('satisfaction')}/5. Comments: ${formData.get('comments')}`;
